@@ -24,6 +24,6 @@
 
 ## 许可 / LICENSE
 
-该库基于MIT许可，具体内容详见 [LICENSE.md](LICENSE.md) 文档。
+该库基于MIT许可，具体内容详见 [LICENSE.md](lib/LICENSE.md) 文档。
 
-This library is under the MIT licence, see the [LICENSE.md](LICENSE.md) document.
+This library is under the MIT licence, see the [LICENSE.md](lib/LICENSE.md) document.
