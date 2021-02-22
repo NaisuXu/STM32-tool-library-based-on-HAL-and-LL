@@ -1,9 +1,9 @@
-#ifndef LIB_HAL_MODBUS_RTU_H_
-#define LIB_HAL_MODBUS_RTU_H_
+#ifndef LIB_LL_MODBUS_RTU_H_
+#define LIB_LL_MODBUS_RTU_H_
 
 #include "main.h"
 
-#ifdef HAL_UART_MODULE_ENABLED
+#ifdef USE_FULL_LL_DRIVER
 
 //Name:    CRC-16/MODBUS
 //Poly:    0x8005 x16+x15+x2+1
@@ -11,43 +11,43 @@
 //Refin:   True
 //Refout:  True
 //Xorout:  0x0000
-extern uint16_t Lib_HAL_ModbusRtu_CalCRC(uint8_t *data, uint32_t size);
+extern uint16_t Lib_LL_ModbusRtu_CalCRC(uint8_t *data, uint32_t size);
 
-#define LIB_HAL_MODBUS_RTU_RXBUF_SIZE 256
+#define LIB_LL_MODBUS_RTU_RXBUF_SIZE 257 // 一帧数据最大256字节，多一个字节用于区分队空队满
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern void Lib_HAL_ModbusRtu_ERROR_Callback(uint8_t addr, uint16_t msgsize);
+extern void Lib_LL_ModbusRtu_ERROR_Callback(uint8_t addr, uint16_t msgsize);
 
-class Lib_HAL_ModbusRtu_Master {
+class Lib_LL_ModbusRtu_Master {
 public:
-	Lib_HAL_ModbusRtu_Master(uint8_t *buf, uint16_t bufsize =
-	LIB_HAL_MODBUS_RTU_RXBUF_SIZE, bool crchighbytefirst = false);
-	~Lib_HAL_ModbusRtu_Master(void);
-	void parse(uint16_t rxsize);
+	Lib_LL_ModbusRtu_Master(uint8_t *buf, uint16_t bufsize = LIB_LL_MODBUS_RTU_RXBUF_SIZE, bool crchighbytefirst = false);
+	~Lib_LL_ModbusRtu_Master(void);
+	void parse(uint16_t rxrear);
 	uint8_t read(uint16_t offset);
 	bool read(uint8_t *dest, uint16_t offset, uint16_t size);
-	void addCbFnUnknown(void (*callback)(uint8_t addr, uint16_t msgsize));
-	void addCbFn01(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn02(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn03(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn04(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn05(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn06(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn0F(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn10(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn14(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn15(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn16(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn17(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
-	void addCbFn2B(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_HAL_ModbusRtu_ERROR_Callback);
+	void addCbFn01(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn02(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn03(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn04(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn05(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn06(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn0F(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn10(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn14(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn15(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn16(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn17(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
+	void addCbFn2B(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback);
 
 private:
 	uint8_t *_buf;
 	uint16_t _bufsize;
 	uint16_t _crchighbytefirst;
+	uint16_t _front;
+	uint16_t _rear;
 	uint16_t _msgsize;
-	void (*_cbfnunknown)(uint8_t addr, uint16_t msgsize);
+	bool check(void);
 	void (*_cbfn01)(uint8_t addr, uint16_t msgsize);
 	void (*_cbfn01err)(uint8_t addr, uint16_t msgsize);
 	void (*_cbfn02)(uint8_t addr, uint16_t msgsize);
@@ -78,16 +78,14 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////
 
-class Lib_HAL_ModbusRtu_Slave {
+class Lib_LL_ModbusRtu_Slave {
 public:
-	Lib_HAL_ModbusRtu_Slave(uint8_t *buf, uint16_t bufsize =
-	LIB_HAL_MODBUS_RTU_RXBUF_SIZE, bool crchighbytefirst = false, uint8_t addr = 1);
-	~Lib_HAL_ModbusRtu_Slave(void);
+	Lib_LL_ModbusRtu_Slave(uint8_t *buf, uint16_t bufsize = LIB_LL_MODBUS_RTU_RXBUF_SIZE, bool crchighbytefirst = false, uint8_t addr = 1);
+	~Lib_LL_ModbusRtu_Slave(void);
 	bool setAddr(uint8_t addr);
-	void parse(uint16_t rxsize);
+	void parse(uint16_t rxrear);
 	uint8_t read(uint16_t offset);
 	bool read(uint8_t *dest, uint16_t offset, uint16_t size);
-	void addCbFnUnknown(void (*callback)(uint8_t addr, uint16_t msgsize));
 	void addCbFn01(void (*callback)(uint8_t addr, uint16_t msgsize));
 	void addCbFn02(void (*callback)(uint8_t addr, uint16_t msgsize));
 	void addCbFn03(void (*callback)(uint8_t addr, uint16_t msgsize));
@@ -107,8 +105,10 @@ private:
 	uint16_t _bufsize;
 	uint16_t _crchighbytefirst;
 	uint8_t _addr;
+	uint16_t _front;
+	uint16_t _rear;
 	uint16_t _msgsize;
-	void (*_cbfnunknown)(uint8_t addr, uint16_t msgsize);
+	bool check(void);
 	void (*_cbfn01)(uint8_t addr, uint16_t msgsize);
 	void (*_cbfn02)(uint8_t addr, uint16_t msgsize);
 	void (*_cbfn03)(uint8_t addr, uint16_t msgsize);
@@ -124,6 +124,6 @@ private:
 	void (*_cbfn2B)(uint8_t addr, uint16_t msgsize);
 };
 
-#endif /* HAL_UART_MODULE_ENABLED */
+#endif /* USE_FULL_LL_DRIVER */
 
-#endif /* LIB_HAL_MODBUS_RTU_H_ */
+#endif /* LIB_LL_MODBUS_RTU_H_ */

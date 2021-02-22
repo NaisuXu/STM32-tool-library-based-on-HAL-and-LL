@@ -6,6 +6,8 @@
 
 该库大部分由C++编写而成，C++项目才能使用（根据情况可能还需要手动将main.c和stm32fxxx_it.c重命名为.cpp）。除了这点外该库可以直接在在STM32CubeMX生成的项目上直接使用。该库完全使用ST官方的HAL和LL库，不改变任何官方库代码。
 
+下面工具中以 `lib_hal_` 开头的表示必须基于HAL库使用， `lib_ll_` 开头的表示必须基于LL库使用，其余工具并无此限制。
+
 
 
 ## lib_hal_ticker
@@ -212,7 +214,7 @@ uarttx.write(buf, size); // 将buf通过串口发送
 
   消息入队，Lib_HAL_UartTx库会控制消息依次发送；
 
-###Lib_HAL_UartTx 其它说明
+### Lib_HAL_UartTx 其它说明
 
 Lib_HAL_UartTx发送队列的容量可以通过 `lib_hal_uart.h` 中 `#define LIB_HAL_UARTTX_MAX_SIZE 8` 参数调节。
 
@@ -795,6 +797,237 @@ tlv5638.setDAC(1000, 2000); // 设置A和B通道输出
 - 在STM32CubeMX设置SPI时除上面参数外还需要通过设置时钟分频系数来调节波特率，根据tlv5638工作模式的不同可选择波特率最大从几百K到1M左右，如果不能正常工作的话可以降低波特率试试；
 
 - 构造函数中的holdrate参数用来调节片选信号（CS或NSS）操作后的保持时间，如果不能正常工作的话可以调节该参数试试；
+
+
+
+## lib_ll_uart
+
+该库处理uart通讯相关事务，tx和rx分开进行处理。
+
+### Lib_LL_UartTx使用说明
+
+该库用于控制UART数据发送，通过该库发送数据时每次将要发送数据的地址与长度放入一个队列，然后调用HAL库的HAL_UART_Transmit_DMA()函数依次发送数据。
+
+**Lib_LL_UartTx使用前需要启用UART发送的DMA传输功能；**
+
+使用时首先声明对象：
+
+```c++
+Lib_LL_UartTx uarttx(USART1, DMA2, LL_DMA_STREAM_7); // Lib_LL_UartTx对象声明
+```
+
+然后在stm32fxxx_it.cpp中添加发送完成中断处理：
+
+```c++
+// 下面中断回调函数由STM32CubeMX自动生成
+void DMA2_Stream7_IRQHandler(void)
+{
+	extern Lib_LL_UartTx uarttx; // 需要添加语句一：引用接收控制对象
+	uarttx.dmaTcHandle(LL_DMA_IsActiveFlag_TC7, LL_DMA_ClearFlag_TC7); // 需要添加语句二：传输完成中断处理
+}
+```
+
+通过下面方式使用：
+
+```c++
+uint8_t buf[size];
+uarttx.write(buf, size); // 将buf通过串口发送
+// 在发送未完成时buf被释放存在风险，推荐数组全局声明或者与Lib_FakeHeap结合使用
+```
+
+### Lib_LL_UartTx API说明
+
+- `Lib_LL_UartTx(USART_TypeDef *uart, DMA_TypeDef *dmax, uint32_t stream_channel)`
+
+  构造函数，依次绑定对应uart、DMA、DMA流或通道；
+
+- `bool write(uint8_t *data, uint16_t size)`
+
+  消息入队，Lib_LL_UartTx库会控制消息依次发送；
+
+- `void dmaTcHandle(uint32_t (*isactiveflag)(DMA_TypeDef *DMAx), void (*clearflag)(DMA_TypeDef *DMAx))`
+
+  DMA传输完成中断处理；
+
+### Lib_LL_UartTx 其它说明
+
+Lib_LL_UartTx发送队列的容量可以通过 `lib_ll_uart.h` 中 `#define LIB_LL_UARTTX_MAX_SIZE 8` 参数调节。
+
+### Lib_LL_UartRx使用说明
+
+该库用于处理UART数据接收，使用DMA接收串口数据，每次触发串口接收空闲中断时对收到的数据进行处理。
+
+**使用前需要启用UART中断和接收的DMA循环传输功能；**
+
+Lib_LL_UartRx初始化时绑定一个静态全局数组作为串口数据接收缓存，绑定一个在串口接收空闲中断时运行的函数；
+
+```c++
+void rxdataParse(uint16_t rxrear){
+    // TODO
+}
+
+static uint8_t uartrxbuf[UARTRX_BUFSIZE] = { 0 }; // 串口接收缓存
+
+Lib_LL_UartRx uartrx(USART1, DMA2, LL_DMA_STREAM_2, uartrxbuf, UARTRX_BUFSIZE, rxdataParse); // Lib_LL_UartRx对象声明
+```
+
+接着需要开启串口空闲中断，比如可以在main函数while(1)之前执行下面语句：
+
+```c++
+uartrx.listen(); // 启动串口接收监听
+```
+
+最后由于该库利用的是串口空闲中断，所以需要在串口中断添加对空闲中断的处理。以下内容需要添加在stm32fxxx_it.cpp中：
+
+```c++
+// 下面中断回调函数由STM32CubeMX自动生成
+void USARTx_IRQHandler(void){ 
+	extern Lib_LL_UartRx uartrx; // 需要添加语句一：引用接收控制对象
+	uartrx.uartIdleHandle(); // 需要添加语句二：串口接收空闲中断处理
+}
+```
+
+通过上面三步该库的使用就完成了，每次串口接收空闲中断时会自动运行rxdataParse()。
+
+### Lib_LL_UartRx API说明
+
+- `Lib_LL_UartRx(USART_TypeDef *uart, DMA_TypeDef *dmax, uint32_t stream_channel, uint8_t *buf, uint32_t bufsize, void (*dataParse)(uint16_t rxrear))`
+
+  构造函数，依次绑定对应uart、DMA、DMA流或通道，绑定串口接收缓存和缓存长度，绑定串口接收空闲中断回调函数；
+
+- `void listen(void)`
+
+  开启串口接收空闲中断和串口DMA接收；
+
+- `void uartIdleHandle(void)`
+
+  串口接收空闲中断处理；
+
+### Lib_LL_UartRx 其它说明
+
+实际使用中一般还会结合通讯协议使用，可以参考lib_ll_modbus_rtu等协议。
+
+
+
+## lib_ll_modbus_rtu
+
+这是一个简单的用于Modbus-Rtu通讯协议的库。
+
+### 协议描述
+
+**Modbus-Rtu协议格式如下：**
+
+<table>
+   <tr>
+      <td>名称</td>
+      <td>地址域</td>
+      <td>功能码</td>
+      <td colspan="4">数据</td>
+      <td>校验低字节</td>
+      <td>校验高字节</td>
+   </tr>
+   <tr>
+      <td>长度</td>
+      <td>1byte</td>
+      <td>1byte</td>
+      <td colspan="4">n byte</td>
+      <td>1byte</td>
+      <td>1byte</td>
+   </tr>
+</table>
+
+
+**地址域：**取值0~247，其中0为广播地址，1~247为从机地址；
+
+**功能码：**功能码由Modbus协议规定，不同功能码对应不同的数据结构和功能操作；
+
+**数据：**对于不同功能码的命令而言数据结构可能有较大不同。目前常用的寄存器操作相关指令中寄存器数据(16bit)通常以大端形式组织，例如数据0x1234，在通讯中先传输0x12、再传输0x34；
+
+**校验：**该协议中采用Modbus模型的CRC16校验，目前常见的情况下校验结果通讯时以小端形式组织，例如数据0xABCD，在通讯中先传输0xCD、再传输0xAB；
+
+
+
+**本库中目前对下面几个功能码的消息进行了检索：**
+
+| 功能码 |    功能描述     |               注释               |
+| :----: | :-------------: | :------------------------------: |
+|  0x01  |     读线圈      |     线圈为bit形式，可读可写      |
+|  0x02  |    读离散量     |      离散量为bit形式，只读       |
+|  0x03  |  读保持寄存器   | 保持寄存器为2bytes形式，可读可写 |
+|  0x04  |  读输入寄存器   |   输入寄存器为2bytes形式，只读   |
+|  0x05  |   写单个线圈    |                                  |
+|  0x06  |  写单个寄存器   |     这里的寄存器指保持寄存器     |
+|  0x0F  |   写多个线圈    |                                  |
+|  0x10  |  写多个寄存器   |     这里的寄存器指保持寄存器     |
+|  0x14  |   读文件记录    |                                  |
+|  0x15  |   写文件记录    |                                  |
+|  0x16  |  屏蔽写寄存器   |                                  |
+|  0x17  | 读/写多个寄存器 |                                  |
+|  0x2B  |  读设备识别码   |                                  |
+
+### 使用说明
+
+该库含有 **Lib_LL_ModbusRtu_Master** 和 **Lib_LL_ModbusRtu_Slave** 两个类，前者用在主机中用于解析来自从机的消息，后者用在从机中用于解析来自主机的消息，两者使用上非常相似，这里仅以前者作为演示说明。该库使用时需要结合Lib_LL_UartRx使用（**Lib_LL_UartRx使用前需要启用UART中断和接收的DMA循环传输功能**）。首先进行下面声明：
+
+```c++
+static uint8_t uartrxbuf[LIB_LL_MODBUS_RTU_RXBUF_SIZE] = { 0 }; // 串口接收缓存
+Lib_LL_ModbusRtu_Master modbus(uartrxbuf); // 协议对象
+Lib_LL_UartRx uartrx(USART1, DMA2, LL_DMA_STREAM_2, uartrxbuf, LIB_LL_MODBUS_RTU_RXBUF_SIZE, [](uint16_t rxrear) {
+	modbus.parse(rxrear);
+}); // Lib_LL_UartRx对象声明
+
+void command03(uint8_t addr, uint16_t msgsize){} // 指令回调函数
+void command06(uint8_t addr, uint16_t msgsize){} // 指令回调函数
+```
+
+对于Lib_LL_UartRx还需要开启串口空闲中断，比如可以在main函数while(1)之前执行下面语句：
+
+```c++
+modbus.addCbFn03(command03); // 绑定指令，功能码为03的消息时触发
+modbus.addCbFn06(command06); // 绑定指令，功能码为06的消息时触发
+
+uartrx.listen(); // 启动串口接收监听
+```
+
+最后对于Lib_LL_UartRx还需要按以下方式在stm32fxxx_it.cpp中添加代码：
+
+```c++
+// 下面中断回调函数由STM32CubeMX自动生成
+void USARTx_IRQHandler(void){ 
+	extern Lib_LL_UartRx uartrx; // 需要添加语句一：引用接收控制对象
+	uartrx.uartIdleHandle(); // 需要添加语句二：串口接收空闲中断处理
+}
+```
+
+上面三步就是该库的使用流程，这样每当接到符合协议的数据的时候就是触发对应的回调函数，比如上面代码中如果接到 `01 03 02 AB CD 06 E1` 、 `01 03 04 11 22 33 44 4B C6` 等时候就会触发command03()，收到 `01 06 00 00 AB CD 37 6F` 、 `01 06 00 07 12 34 35 7C` 等的时候会触发command06()；
+
+### API说明
+
+该库含有 **Lib_LL_ModbusRtu_Master** 和 **Lib_LL_ModbusRtu_Slave** 两个类，两者非常相似，这里仅以前者作为演示说明（后者多一个设置自身地址的方法）：
+
+- `Lib_LL_ModbusRtu_Master(uint8_t *buf, uint16_t bufsize = LIB_LL_MODBUS_RTU_RXBUF_SIZE, bool crchighbytefirst = false)`
+
+  构造函数，需要绑定串口接收缓存、缓存长度， `crchighbytefirst` 参数用于表示CRC校验高低字节顺序，默认 `false` 表示低字节在前；
+
+- `void parse(uint16_t rxrear)`
+
+  解析数据；
+
+- `uint8_t read(uint16_t offset)`
+
+  `bool read(uint8_t *dest, uint16_t offset, uint16_t size)`
+
+  读取当前指令数据，只能在指令回调函数中使用；
+
+  offset表示当前指令数据下标，dest为用于接收数据的数组地址，size表示要读取数据长度；
+
+- `void addCbFn01(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback)`
+
+  `...`
+
+  `void addCbFn2B(void (*callback)(uint8_t addr, uint16_t msgsize), void (*errcallback)(uint8_t addr, uint16_t msgsize) = Lib_LL_ModbusRtu_ERROR_Callback)`
+
+  添加对应功能码的回调函数和异常响应回调函数， `addCbFn01` 用于添加功能码为0x01的消息回调函数， `addCbFn2B` 用于添加功能码为0x2B的消息回调函数。
 
 
 
