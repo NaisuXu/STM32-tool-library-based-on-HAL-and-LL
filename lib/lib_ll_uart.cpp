@@ -1,6 +1,7 @@
 #include "lib_ll_uart.h"
 
-#if defined(__STM32F4xx_LL_USART_H) && defined(__STM32F4xx_LL_DMA_H) || \
+#if (defined(STM32G0xx_LL_USART_H) && defined(STM32G0xx_LL_DMA_H)) || \
+	defined(__STM32F4xx_LL_USART_H) && defined(__STM32F4xx_LL_DMA_H) || \
 	(defined(__STM32F1xx_LL_USART_H) && defined(__STM32F1xx_LL_DMA_H))
 
 Lib_LL_UartTx::Lib_LL_UartTx(USART_TypeDef *uart, DMA_TypeDef *dmax, uint32_t stream_channel) :
@@ -21,7 +22,13 @@ bool Lib_LL_UartTx::write(uint8_t *data, uint16_t size) {
 		_sending = true;
 		if (!_begin) {
 			_begin = true;
+
+#if defined(STM32G0xx_LL_USART_H) && defined(STM32G0xx_LL_DMA_H)
+			LL_DMA_SetPeriphAddress(_dmax, _stream_channel, LL_USART_DMA_GetRegAddr(_uart, LL_USART_DMA_REG_DATA_TRANSMIT));
+#else
 			LL_DMA_SetPeriphAddress(_dmax, _stream_channel, LL_USART_DMA_GetRegAddr(_uart));
+#endif
+
 			LL_DMA_EnableIT_TC(_dmax, _stream_channel);
 			LL_USART_EnableDMAReq_TX(_uart);
 		}
@@ -58,7 +65,15 @@ Lib_LL_UartRx::~Lib_LL_UartRx(void) {
 }
 
 void Lib_LL_UartRx::listen(void) {
-	LL_DMA_SetPeriphAddress(_dmax, _stream_channel, LL_USART_DMA_GetRegAddr(_uart));
+	LL_USART_ReceiveData8(_uart);
+	LL_USART_ClearFlag_ORE(_uart);
+
+#if defined(STM32G0xx_LL_USART_H) && defined(STM32G0xx_LL_DMA_H)
+			LL_DMA_SetPeriphAddress(_dmax, _stream_channel, LL_USART_DMA_GetRegAddr(_uart, LL_USART_DMA_REG_DATA_RECEIVE));
+#else
+			LL_DMA_SetPeriphAddress(_dmax, _stream_channel, LL_USART_DMA_GetRegAddr(_uart));
+#endif
+
 	LL_DMA_SetMemoryAddress(_dmax, _stream_channel, (uint32_t) _buf);
 	LL_DMA_SetDataLength(_dmax, _stream_channel, _bufsize);
 	LL_USART_EnableDMAReq_RX(_uart);

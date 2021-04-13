@@ -3,7 +3,10 @@
 
 #include "main.h"
 
-#if defined(__STM32F4xx_LL_USART_H) && defined(__STM32F4xx_LL_DMA_H)
+#if defined(STM32G0xx_LL_USART_H) && defined(STM32G0xx_LL_DMA_H)
+#define LL_DMA_EnableStreamChannel LL_DMA_EnableChannel
+#define LL_DMA_DisableStreamChannel LL_DMA_DisableChannel
+#elif defined(__STM32F4xx_LL_USART_H) && defined(__STM32F4xx_LL_DMA_H)
 #define LL_DMA_EnableStreamChannel LL_DMA_EnableStream
 #define LL_DMA_DisableStreamChannel LL_DMA_DisableStream
 #elif defined(__STM32F1xx_LL_USART_H) && defined(__STM32F1xx_LL_DMA_H)
@@ -13,7 +16,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if (defined(__STM32F4xx_LL_USART_H) && defined(__STM32F4xx_LL_DMA_H)) || \
+#if (defined(STM32G0xx_LL_USART_H) && defined(STM32G0xx_LL_DMA_H)) || \
+	(defined(__STM32F4xx_LL_USART_H) && defined(__STM32F4xx_LL_DMA_H)) || \
 	(defined(__STM32F1xx_LL_USART_H) && defined(__STM32F1xx_LL_DMA_H))
 
 #define LIB_LL_UARTTX_MAX_SIZE 8

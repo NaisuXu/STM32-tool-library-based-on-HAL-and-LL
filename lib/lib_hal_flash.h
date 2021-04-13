@@ -6,10 +6,15 @@
 #ifdef HAL_FLASH_MODULE_ENABLED
 
 //this must less then or equal to page or sector size
-//and must be even
-#define LIB_HAL_FLASH_USER_MAX_SIZE 100
+#define LIB_HAL_FLASH_USER_MAX_SIZE 128
 
-#if defined(STM32F030x6) || defined(STM32F042x6) || defined(STM32F070x6)
+#if defined(STM32G0xx_HAL_FLASH_EX_H)
+#define LIB_HAL_FLASH_ADDRESS (0x08000000 + (FLASH_PAGE_NB -1) * FLASH_PAGE_SIZE) //see "stm32g0xx_hal_flash.h" or document<RM0454>
+#define LIB_HAL_FLASH_TYPEERASE (FLASH_TYPEERASE_PAGES) //see "stm32g0xx_hal_flash.h"
+#define LIB_HAL_FLASH_BANKS (FLASH_BANK_1) //see "stm32g0xx_hal_flash.h"
+#define LIB_HAL_FLASH_PAGE (FLASH_PAGE_NB -1) //see "stm32g0xx_hal_flash.h" or document<RM0454>
+
+#elif defined(STM32F030x6) || defined(STM32F042x6) || defined(STM32F070x6)
 #define LIB_HAL_FLASH_TYPEERASE (FLASH_TYPEERASE_PAGES) //see "stm32fxxx_hal_flash_ex.h"
 #define LIB_HAL_FLASH_ADDRESS (FLASH_BANK1_END - FLASH_PAGE_SIZE + 1)
 

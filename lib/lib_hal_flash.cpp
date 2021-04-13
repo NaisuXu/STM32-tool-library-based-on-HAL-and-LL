@@ -39,26 +39,22 @@ bool Lib_HAL_Flash::write(uint8_t *data, size_t startaddr, size_t size) {
 	if ((startaddr + size) > LIB_HAL_FLASH_USER_MAX_SIZE) {
 		return false;
 	}
-	size_t halfwordsize = LIB_HAL_FLASH_USER_MAX_SIZE / 2;
-	uint16_t buf[halfwordsize];
-	for (size_t i = 0; i < halfwordsize; i++) {
-		buf[i] = (read(i * 2) << 8) | read(i * 2 + 1);
+	size_t doublewordsize = LIB_HAL_FLASH_USER_MAX_SIZE / 8;
+	uint64_t buf[doublewordsize];
+	for (size_t i = 0; i < doublewordsize; i++) {
+		buf[i] = ((uint64_t)read(i * 8) << 56) | ((uint64_t)read(i * 8 + 1) << 48) | ((uint64_t)read(i * 8 + 2) << 40) | ((uint64_t)read(i * 8 + 3) << 32);
+		buf[i] |= ((uint64_t)read(i * 8 + 4) << 24) | ((uint64_t)read(i * 8 + 5) << 16) | ((uint64_t)read(i * 8 + 6) << 8) | (uint64_t)read(i * 8 + 7);
 	}
 	for (size_t i = 0; i < size; i++) {
-		size_t index = (startaddr + i) / 2;
-		size_t rem = (startaddr + i) % 2;
-		if (rem) {
-			buf[index] = buf[index] & 0x00FF;
-			buf[index] = buf[index] | (data[i] << 8);
-		} else {
-			buf[index] = buf[index] & 0xFF00;
-			buf[index] = buf[index] | data[i];
-		}
+		size_t index = (startaddr + i) / 8;
+		size_t rem = (startaddr + i) % 8;
+		buf[index] &= ~(0x00000000000000FF << ((uint64_t)rem * 8));
+		buf[index] |= (uint64_t)data[i] << ((uint64_t)rem * 8);
 	}
 	erase();
 	HAL_FLASH_Unlock();
-	for (size_t i = 0; i < halfwordsize; i++) {
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, i * 2 + LIB_HAL_FLASH_ADDRESS, buf[i]);
+	for (size_t i = 0; i < doublewordsize; i++) {
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, i * 8 + LIB_HAL_FLASH_ADDRESS, buf[i]);
 	}
 	HAL_FLASH_Lock();
 	return true;
@@ -70,7 +66,13 @@ void Lib_HAL_Flash::erase(void) {
 	HAL_FLASH_Unlock();
 	FLASH_EraseInitTypeDef flash;
 
-#if defined(STM32F030x6) || defined(STM32F042x6) || defined(STM32F070x6)
+#if defined(STM32G0xx_HAL_FLASH_EX_H)
+	flash.TypeErase = LIB_HAL_FLASH_TYPEERASE;
+	flash.Banks = LIB_HAL_FLASH_BANKS;
+	flash.Page = LIB_HAL_FLASH_PAGE;
+	flash.NbPages = 1;
+
+#elif defined(STM32F030x6) || defined(STM32F042x6) || defined(STM32F070x6)
 	flash.TypeErase = LIB_HAL_FLASH_TYPEERASE;
 	flash.PageAddress = LIB_HAL_FLASH_ADDRESS;
 	flash.NbPages = 1;

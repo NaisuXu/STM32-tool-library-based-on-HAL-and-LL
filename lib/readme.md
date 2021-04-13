@@ -592,7 +592,7 @@ libhalflash.write(buf, 25, size); // 从地址25开始写入长度为size的数�
 
 ### 其它说明
 
-- 可以通过 `lib_hal_flash.h` 中的 `#define LIB_HAL_FLASH_USER_MAX_SIZE 100` 调节该库存储区域大小，必须小于 `FLASH_PAGE_SIZE` ，并且必须为偶数；
+- 可以通过 `lib_hal_flash.h` 中的 `#define LIB_HAL_FLASH_USER_MAX_SIZE 128` 调节该库存储区域大小，必须小于 `FLASH_PAGE_SIZE` ，并且必须为8或或8的倍数；
 - 对flash的写入和擦除动作比较耗时，使用时请注意；
 - flash的写入有寿命限制，stm32系列的微控制器最少可写入次数为1K，典型值为10K，设计时需要充分考虑；
 - flash读写涉及到的部分代码不兼容stm32所有系列，有些情况下可能需要调整库代码；
